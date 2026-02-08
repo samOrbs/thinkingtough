@@ -1,0 +1,471 @@
+{
+  "nodes": [
+    {
+      "id": "title",
+      "type": "text",
+      "x": 200,
+      "y": -400,
+      "width": 800,
+      "height": 100,
+      "text": "# Implementation Plan\n## Build Order — Sequential Steps to Working Chatbot"
+    },
+
+    {
+      "id": "g_phase1",
+      "type": "group",
+      "x": -100,
+      "y": -200,
+      "width": 2200,
+      "height": 500,
+      "color": "1",
+      "label": "BUILD STEP 1: OCR Pipeline — Convert 232 JPG pages to Markdown"
+    },
+    {
+      "id": "s1_input",
+      "type": "text",
+      "x": 0,
+      "y": -100,
+      "width": 250,
+      "height": 100,
+      "color": "1",
+      "text": "**INPUT**\n`pages/page_0001.jpg`\nthrough\n`pages/page_0232.jpg`"
+    },
+    {
+      "id": "s1_script",
+      "type": "text",
+      "x": 340,
+      "y": -100,
+      "width": 300,
+      "height": 100,
+      "color": "1",
+      "text": "**Write `ocr.py`**\nGemini 2.0 Flash vision API\nSend each image with prompt:\n\"Transcribe this book page\""
+    },
+    {
+      "id": "s1_clean",
+      "type": "text",
+      "x": 730,
+      "y": -100,
+      "width": 280,
+      "height": 100,
+      "color": "1",
+      "text": "**Text Cleaning**\nHyphen rejoin across lines\nRemove page headers/footers\nFix OCR artifacts\nUnicode normalization"
+    },
+    {
+      "id": "s1_structure",
+      "type": "text",
+      "x": 1100,
+      "y": -100,
+      "width": 280,
+      "height": 100,
+      "color": "1",
+      "text": "**Structure Detection**\nIdentify chapter boundaries\nExtract headings & sections\nTag metadata per page"
+    },
+    {
+      "id": "s1_output",
+      "type": "text",
+      "x": 1470,
+      "y": -100,
+      "width": 280,
+      "height": 100,
+      "color": "1",
+      "text": "**OUTPUT**\n`pages_markdown/page_0001.md`\nthrough `page_0232.md`\n+ `book_structure.json`"
+    },
+    {
+      "id": "s1_verify",
+      "type": "text",
+      "x": 1840,
+      "y": -100,
+      "width": 250,
+      "height": 100,
+      "color": "1",
+      "text": "**Verify & Commit**\nSpot-check 5 random pages\nCompare to JPG originals\n`git commit`"
+    },
+    {
+      "id": "s1_cost",
+      "type": "text",
+      "x": 600,
+      "y": 60,
+      "width": 400,
+      "height": 70,
+      "text": "**Cost: ~$0.06** | ~140K input tokens + ~116K output tokens\nGemini 2.0 Flash: $0.10/1M in, $0.40/1M out"
+    },
+    {
+      "id": "s1_files",
+      "type": "text",
+      "x": 0,
+      "y": 60,
+      "width": 400,
+      "height": 70,
+      "text": "**Files created:**\n`src/ocr.py` — OCR + cleaning + structure detection"
+    },
+
+    {
+      "id": "g_phase2",
+      "type": "group",
+      "x": -100,
+      "y": 420,
+      "width": 2200,
+      "height": 530,
+      "color": "6",
+      "label": "BUILD STEP 2: Indexing Pipeline — Chunk, Embed, Store"
+    },
+    {
+      "id": "s2_fulltext",
+      "type": "text",
+      "x": 0,
+      "y": 520,
+      "width": 250,
+      "height": 100,
+      "color": "6",
+      "text": "**INPUT**\n232 markdown files\n+ `book_structure.json`\nCombine into full text"
+    },
+    {
+      "id": "s2_chunk",
+      "type": "text",
+      "x": 340,
+      "y": 520,
+      "width": 280,
+      "height": 100,
+      "color": "6",
+      "text": "**Semantic Chunking**\nParagraph-boundary splits\n~512 tokens, 100 overlap\nPreserve page/chapter metadata"
+    },
+    {
+      "id": "s2_embed",
+      "type": "text",
+      "x": 710,
+      "y": 520,
+      "width": 280,
+      "height": 100,
+      "color": "6",
+      "text": "**Gemini Embeddings**\n`text-embedding-004`\n768 dimensions\nBatch all chunks"
+    },
+    {
+      "id": "s2_chroma",
+      "type": "text",
+      "x": 1080,
+      "y": 520,
+      "width": 260,
+      "height": 100,
+      "color": "6",
+      "text": "**ChromaDB Store**\nPersistent local storage\nCosine similarity\n`./chroma_db/`"
+    },
+    {
+      "id": "s2_bm25",
+      "type": "text",
+      "x": 1080,
+      "y": 680,
+      "width": 260,
+      "height": 80,
+      "color": "6",
+      "text": "**BM25 Index**\nKeyword search\n`bm25_index.pkl`"
+    },
+    {
+      "id": "s2_verify",
+      "type": "text",
+      "x": 1440,
+      "y": 520,
+      "width": 250,
+      "height": 100,
+      "color": "6",
+      "text": "**Verify & Commit**\nTest query: \"What is IPS?\"\nConfirm relevant chunks\nreturned. `git commit`"
+    },
+    {
+      "id": "s2_cost",
+      "type": "text",
+      "x": 0,
+      "y": 700,
+      "width": 400,
+      "height": 60,
+      "text": "**Cost: ~$0.001** | ~150K tokens for embedding\nChromaDB & BM25: Free (local)"
+    },
+    {
+      "id": "s2_files",
+      "type": "text",
+      "x": 0,
+      "y": 810,
+      "width": 400,
+      "height": 60,
+      "text": "**Files created:**\n`src/indexing.py` — chunking, embedding, storage"
+    },
+
+    {
+      "id": "g_phase3",
+      "type": "group",
+      "x": -100,
+      "y": 1070,
+      "width": 2200,
+      "height": 530,
+      "color": "4",
+      "label": "BUILD STEP 3: Retrieval Pipeline — Search and Rank"
+    },
+    {
+      "id": "s3_input",
+      "type": "text",
+      "x": 0,
+      "y": 1170,
+      "width": 220,
+      "height": 90,
+      "color": "4",
+      "text": "**INPUT**\nUser query string\nConversation history"
+    },
+    {
+      "id": "s3_expand",
+      "type": "text",
+      "x": 310,
+      "y": 1170,
+      "width": 280,
+      "height": 90,
+      "color": "4",
+      "text": "**Query Expansion**\nGenerate 2 variants with\nGemini Flash for broader\nsemantic coverage"
+    },
+    {
+      "id": "s3_search",
+      "type": "text",
+      "x": 680,
+      "y": 1170,
+      "width": 280,
+      "height": 90,
+      "color": "4",
+      "text": "**Hybrid Search**\nVector: top-20 from ChromaDB\nBM25: top-20 keyword match\nRun in parallel"
+    },
+    {
+      "id": "s3_fuse",
+      "type": "text",
+      "x": 1050,
+      "y": 1170,
+      "width": 260,
+      "height": 90,
+      "color": "4",
+      "text": "**Rank Fusion**\nReciprocal Rank Fusion\nMerge & deduplicate\nTop-10 candidates"
+    },
+    {
+      "id": "s3_assemble",
+      "type": "text",
+      "x": 1400,
+      "y": 1170,
+      "width": 260,
+      "height": 90,
+      "color": "4",
+      "text": "**Context Assembly**\nTop-5 chunks\nOrdered by relevance\nWith page citations"
+    },
+    {
+      "id": "s3_verify",
+      "type": "text",
+      "x": 1750,
+      "y": 1170,
+      "width": 250,
+      "height": 90,
+      "color": "4",
+      "text": "**Verify & Commit**\nTest 5 queries, check\nrelevant pages returned\n`git commit`"
+    },
+    {
+      "id": "s3_cost",
+      "type": "text",
+      "x": 0,
+      "y": 1330,
+      "width": 500,
+      "height": 60,
+      "text": "**Cost per query: ~$0.0003** | Query expansion only\nVector search + BM25 + fusion: Free (local)"
+    },
+    {
+      "id": "s3_files",
+      "type": "text",
+      "x": 0,
+      "y": 1440,
+      "width": 400,
+      "height": 60,
+      "text": "**Files created:**\n`src/retrieval.py` — search, fuse, assemble"
+    },
+
+    {
+      "id": "g_phase4",
+      "type": "group",
+      "x": -100,
+      "y": 1720,
+      "width": 2200,
+      "height": 530,
+      "color": "5",
+      "label": "BUILD STEP 4: Generation + Chat UI — The Working Chatbot"
+    },
+    {
+      "id": "s4_prompt",
+      "type": "text",
+      "x": 0,
+      "y": 1820,
+      "width": 280,
+      "height": 100,
+      "color": "5",
+      "text": "**System Prompt**\nBook expert persona\nBook summary (generated)\nCitation rules\nConversation guidelines"
+    },
+    {
+      "id": "s4_generate",
+      "type": "text",
+      "x": 370,
+      "y": 1820,
+      "width": 280,
+      "height": 100,
+      "color": "5",
+      "text": "**LLM Generation**\nGemini 2.0 Flash\nSystem prompt + context\n+ conversation history\nStreaming output"
+    },
+    {
+      "id": "s4_chainlit",
+      "type": "text",
+      "x": 740,
+      "y": 1820,
+      "width": 280,
+      "height": 100,
+      "color": "5",
+      "text": "**Chainlit Chat UI**\n`app.py` entry point\nStreaming responses\nSource citation panel\nSession management"
+    },
+    {
+      "id": "s4_memory",
+      "type": "text",
+      "x": 1110,
+      "y": 1820,
+      "width": 280,
+      "height": 100,
+      "color": "5",
+      "text": "**Basic Memory**\nSQLite conversation store\nSession history\nTurn compression for\nlong conversations"
+    },
+    {
+      "id": "s4_verify",
+      "type": "text",
+      "x": 1480,
+      "y": 1820,
+      "width": 280,
+      "height": 100,
+      "color": "5",
+      "text": "**Verify & Commit**\nAsk 10 questions in UI\nCheck citations correct\nTest multi-turn chat\n`git commit`"
+    },
+    {
+      "id": "s4_done",
+      "type": "text",
+      "x": 1850,
+      "y": 1820,
+      "width": 240,
+      "height": 100,
+      "color": "5",
+      "text": "**CHATBOT LIVE**\n`chainlit run app.py`\nPort 8000\nReady to use!"
+    },
+    {
+      "id": "s4_cost",
+      "type": "text",
+      "x": 0,
+      "y": 1990,
+      "width": 500,
+      "height": 60,
+      "text": "**Cost per query: ~$0.001** | Gemini Flash generation\n**Monthly (50 q/day): ~$1.50**"
+    },
+    {
+      "id": "s4_files",
+      "type": "text",
+      "x": 0,
+      "y": 2100,
+      "width": 500,
+      "height": 60,
+      "text": "**Files created:**\n`src/generation.py` | `src/memory.py` | `app.py` | `requirements.txt`"
+    },
+
+    {
+      "id": "g_future",
+      "type": "group",
+      "x": -100,
+      "y": 2380,
+      "width": 2200,
+      "height": 350,
+      "color": "3",
+      "label": "FUTURE ENHANCEMENTS (After v1 is working)"
+    },
+    {
+      "id": "sf_enrich",
+      "type": "text",
+      "x": 0,
+      "y": 2470,
+      "width": 280,
+      "height": 90,
+      "color": "3",
+      "text": "**Contextual Enrichment**\nAnthropic method\n67% better retrieval\n+$0.35 one-time"
+    },
+    {
+      "id": "sf_rerank",
+      "type": "text",
+      "x": 370,
+      "y": 2470,
+      "width": 260,
+      "height": 90,
+      "color": "3",
+      "text": "**Cohere Reranking**\nCross-encoder reranker\nMuch better precision\n+$0.002/query"
+    },
+    {
+      "id": "sf_raptor",
+      "type": "text",
+      "x": 720,
+      "y": 2470,
+      "width": 260,
+      "height": 90,
+      "color": "3",
+      "text": "**RAPTOR Summaries**\nMulti-level abstractions\nBetter chapter questions\n+$0.15 one-time"
+    },
+    {
+      "id": "sf_agents",
+      "type": "text",
+      "x": 1070,
+      "y": 2470,
+      "width": 260,
+      "height": 90,
+      "color": "3",
+      "text": "**Agentic Tools**\nNotes, flashcards, plans\nChapter summaries\nTool use via native API"
+    },
+    {
+      "id": "sf_routing",
+      "type": "text",
+      "x": 1420,
+      "y": 2470,
+      "width": 260,
+      "height": 90,
+      "color": "3",
+      "text": "**Model Routing**\nSimple → Gemini Flash\nComplex → Claude Sonnet\nSaves ~66% cost"
+    },
+    {
+      "id": "sf_eval",
+      "type": "text",
+      "x": 1770,
+      "y": 2470,
+      "width": 260,
+      "height": 90,
+      "color": "3",
+      "text": "**Evaluation Suite**\nRAGAS + DeepEval\n50+ test Q&A pairs\nAutomated benchmarks"
+    }
+  ],
+  "edges": [
+    {"id": "e_s1_1", "fromNode": "s1_input", "fromSide": "right", "toNode": "s1_script", "toSide": "left", "color": "#e94560"},
+    {"id": "e_s1_2", "fromNode": "s1_script", "fromSide": "right", "toNode": "s1_clean", "toSide": "left", "color": "#e94560"},
+    {"id": "e_s1_3", "fromNode": "s1_clean", "fromSide": "right", "toNode": "s1_structure", "toSide": "left", "color": "#e94560"},
+    {"id": "e_s1_4", "fromNode": "s1_structure", "fromSide": "right", "toNode": "s1_output", "toSide": "left", "color": "#e94560"},
+    {"id": "e_s1_5", "fromNode": "s1_output", "fromSide": "right", "toNode": "s1_verify", "toSide": "left", "color": "#e94560"},
+
+    {"id": "e_p1_to_p2", "fromNode": "s1_output", "fromSide": "bottom", "toNode": "s2_fulltext", "toSide": "top", "color": "#f59e0b", "label": "232 markdown files"},
+
+    {"id": "e_s2_1", "fromNode": "s2_fulltext", "fromSide": "right", "toNode": "s2_chunk", "toSide": "left", "color": "#f59e0b"},
+    {"id": "e_s2_2", "fromNode": "s2_chunk", "fromSide": "right", "toNode": "s2_embed", "toSide": "left", "color": "#f59e0b"},
+    {"id": "e_s2_3", "fromNode": "s2_embed", "fromSide": "right", "toNode": "s2_chroma", "toSide": "left", "color": "#f59e0b"},
+    {"id": "e_s2_4", "fromNode": "s2_chunk", "fromSide": "bottom", "toNode": "s2_bm25", "toSide": "left", "color": "#f59e0b"},
+    {"id": "e_s2_5", "fromNode": "s2_chroma", "fromSide": "right", "toNode": "s2_verify", "toSide": "left", "color": "#f59e0b"},
+
+    {"id": "e_p2_to_p3", "fromNode": "s2_chroma", "fromSide": "bottom", "toNode": "s3_search", "toSide": "top", "color": "#3b82f6", "label": "Vector + BM25 stores"},
+
+    {"id": "e_s3_1", "fromNode": "s3_input", "fromSide": "right", "toNode": "s3_expand", "toSide": "left", "color": "#3b82f6"},
+    {"id": "e_s3_2", "fromNode": "s3_expand", "fromSide": "right", "toNode": "s3_search", "toSide": "left", "color": "#3b82f6"},
+    {"id": "e_s3_3", "fromNode": "s3_search", "fromSide": "right", "toNode": "s3_fuse", "toSide": "left", "color": "#3b82f6"},
+    {"id": "e_s3_4", "fromNode": "s3_fuse", "fromSide": "right", "toNode": "s3_assemble", "toSide": "left", "color": "#3b82f6"},
+    {"id": "e_s3_5", "fromNode": "s3_assemble", "fromSide": "right", "toNode": "s3_verify", "toSide": "left", "color": "#3b82f6"},
+
+    {"id": "e_p3_to_p4", "fromNode": "s3_assemble", "fromSide": "bottom", "toNode": "s4_prompt", "toSide": "top", "color": "#10b981", "label": "Top-5 context chunks"},
+
+    {"id": "e_s4_1", "fromNode": "s4_prompt", "fromSide": "right", "toNode": "s4_generate", "toSide": "left", "color": "#10b981"},
+    {"id": "e_s4_2", "fromNode": "s4_generate", "fromSide": "right", "toNode": "s4_chainlit", "toSide": "left", "color": "#10b981"},
+    {"id": "e_s4_3", "fromNode": "s4_chainlit", "fromSide": "right", "toNode": "s4_memory", "toSide": "left", "color": "#10b981"},
+    {"id": "e_s4_4", "fromNode": "s4_memory", "fromSide": "right", "toNode": "s4_verify", "toSide": "left", "color": "#10b981"},
+    {"id": "e_s4_5", "fromNode": "s4_verify", "fromSide": "right", "toNode": "s4_done", "toSide": "left", "color": "#10b981"}
+  ]
+}
