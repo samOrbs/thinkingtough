@@ -35,85 +35,112 @@ class Chunk:
 
 
 def load_pages() -> list[tuple[int, str]]:
-    """Load all markdown pages, return list of (page_number, text)."""
+    """Load all markdown pages, return list of (page_number, text).
+    Filters out front matter (covers, copyright, ToC) and back matter
+    (library stamps, back cover) which pollute retrieval.
+    """
+    # Pages to skip: covers, copyright, other-book noise, ToC, bibliography, index, library stamps
+    # 1-15: covers, copyright, digitization notices, other-book pages, table of contents
+    # 218-232: bibliography, book index, library stamps, back cover
+    SKIP_PAGES = set(range(1, 16)) | set(range(218, 233))
+
     pages = []
     for md_file in sorted(MARKDOWN_DIR.glob("page_*.md")):
         page_num = int(md_file.stem.split("_")[1])
+        if page_num in SKIP_PAGES:
+            continue
         text = md_file.read_text(encoding="utf-8")
-        if text.strip():
+        # Remove HTML comments (page markers)
+        text = re.sub(r"<!--.*?-->", "", text).strip()
+        if text.strip() and len(text.split()) > 20:
             pages.append((page_num, text))
-    print(f"Loaded {len(pages)} pages")
+    print(f"Loaded {len(pages)} content pages (skipped front/back matter)")
     return pages
 
 
 def semantic_chunk(
     pages: list[tuple[int, str]],
-    max_tokens: int = 512,
-    overlap_tokens: int = 100
+    max_tokens: int = 400,
+    overlap_tokens: int = 80
 ) -> list[Chunk]:
-    """Split pages into chunks at paragraph boundaries."""
-    chunks = []
-
+    """Split pages into chunks at paragraph boundaries.
+    Works ACROSS pages so chunks aren't limited to single pages.
+    Tracks page ranges for citation accuracy.
+    """
+    # Build a flat list of (paragraph_text, page_number)
+    all_paras = []
     for page_num, text in pages:
-        # Remove page comment header
-        text = re.sub(r"<!--.*?-->", "", text).strip()
-
         paragraphs = re.split(r"\n\n+", text)
-        current_paras = []
-        current_tokens = 0
-
         for para in paragraphs:
             para = para.strip()
-            if not para:
-                continue
+            if para and len(para.split()) > 3:
+                all_paras.append((para, page_num))
 
-            para_tokens = len(para.split())
+    # Deduplicate consecutive identical paragraphs (from duplicate OCR pages)
+    deduped = []
+    for para, page in all_paras:
+        if not deduped or para != deduped[-1][0]:
+            deduped.append((para, page))
+    all_paras = deduped
+    print(f"  {len(all_paras)} paragraphs after deduplication")
 
-            if current_tokens + para_tokens > max_tokens and current_paras:
-                chunk_text = "\n\n".join(current_paras)
-                chunks.append(Chunk(
-                    text=chunk_text,
-                    metadata={
-                        "page_number": page_num,
-                        "chunk_index": len(chunks),
-                        "word_count": current_tokens
-                    }
-                ))
+    # Chunk across page boundaries
+    chunks = []
+    current_paras = []
+    current_pages = set()
+    current_tokens = 0
 
-                # Overlap: keep last paragraph(s)
-                overlap_paras = []
-                overlap_count = 0
-                for p in reversed(current_paras):
-                    p_tokens = len(p.split())
-                    if overlap_count + p_tokens > overlap_tokens:
-                        break
-                    overlap_paras.insert(0, p)
-                    overlap_count += p_tokens
+    for para, page_num in all_paras:
+        para_tokens = len(para.split())
 
-                current_paras = overlap_paras
-                current_tokens = overlap_count
+        if current_tokens + para_tokens > max_tokens and current_paras:
+            chunk_text = "\n\n".join(p for p, _ in current_paras)
+            page_list = sorted(current_pages)
+            chunks.append(Chunk(
+                text=chunk_text,
+                metadata={
+                    "page_number": page_list[0],
+                    "page_end": page_list[-1],
+                    "pages": page_list,
+                    "chunk_index": len(chunks),
+                    "word_count": current_tokens
+                }
+            ))
 
-            current_paras.append(para)
-            current_tokens += para_tokens
+            # Overlap: keep last paragraph(s)
+            overlap_paras = []
+            overlap_count = 0
+            for p, pg in reversed(current_paras):
+                p_tokens = len(p.split())
+                if overlap_count + p_tokens > overlap_tokens:
+                    break
+                overlap_paras.insert(0, (p, pg))
+                overlap_count += p_tokens
 
-        # Emit final chunk for this page
-        if current_paras:
-            chunk_text = "\n\n".join(current_paras)
-            # Merge tiny trailing chunks with previous
-            if len(chunks) > 0 and current_tokens < 50 and chunks[-1].metadata["page_number"] == page_num:
-                chunks[-1].text += "\n\n" + chunk_text
-                chunks[-1].metadata["word_count"] += current_tokens
-            else:
-                chunks.append(Chunk(
-                    text=chunk_text,
-                    metadata={
-                        "page_number": page_num,
-                        "chunk_index": len(chunks),
-                        "word_count": current_tokens
-                    }
-                ))
+            current_paras = overlap_paras
+            current_pages = {pg for _, pg in current_paras}
+            current_tokens = overlap_count
 
-    print(f"Created {len(chunks)} chunks")
+        current_paras.append((para, page_num))
+        current_pages.add(page_num)
+        current_tokens += para_tokens
+
+    # Final chunk
+    if current_paras:
+        chunk_text = "\n\n".join(p for p, _ in current_paras)
+        page_list = sorted(current_pages)
+        chunks.append(Chunk(
+            text=chunk_text,
+            metadata={
+                "page_number": page_list[0],
+                "page_end": page_list[-1],
+                "pages": page_list,
+                "chunk_index": len(chunks),
+                "word_count": current_tokens
+            }
+        ))
+
+    print(f"Created {len(chunks)} chunks (cross-page, deduplicated)")
     return chunks
 
 
@@ -150,24 +177,37 @@ def store_in_chromadb(chunks: list[Chunk], embeddings: list[list[float]]):
         metadata={"hnsw:space": "cosine"}
     )
 
+    # ChromaDB metadata must be str/int/float/bool — convert page lists to strings
+    chroma_metadatas = []
+    for c in chunks:
+        meta = dict(c.metadata)
+        if "pages" in meta:
+            meta["pages"] = ",".join(str(p) for p in meta["pages"])
+        chroma_metadatas.append(meta)
+
     collection.add(
         ids=[f"chunk_{i}" for i in range(len(chunks))],
         embeddings=embeddings,
         documents=[c.text for c in chunks],
-        metadatas=[c.metadata for c in chunks]
+        metadatas=chroma_metadatas
     )
 
     print(f"Stored {len(chunks)} chunks in ChromaDB at {CHROMA_DIR}")
 
 
 def build_bm25_index(chunks: list[Chunk]):
-    """Build and save BM25 keyword index."""
+    """Build and save BM25 keyword index.
+    Stores chunks as plain dicts to avoid pickle module-path issues.
+    """
     tokenized = [re.findall(r"\w+", c.text.lower()) for c in chunks]
     bm25 = BM25Okapi(tokenized)
 
+    # Convert Chunk objects to plain dicts for pickle compatibility
+    chunk_dicts = [{"text": c.text, "metadata": c.metadata} for c in chunks]
+
     BM25_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(BM25_PATH, "wb") as f:
-        pickle.dump({"bm25": bm25, "chunks": chunks}, f)
+        pickle.dump({"bm25": bm25, "chunks": chunk_dicts}, f)
 
     print(f"Built BM25 index over {len(chunks)} chunks, saved to {BM25_PATH}")
 

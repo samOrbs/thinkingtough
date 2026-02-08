@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from google import genai
 import chromadb
 from rank_bm25 import BM25Okapi
-from src.indexing import Chunk  # Needed for unpickling BM25 index
+# BM25 chunks stored as plain dicts — no Chunk import needed
 
 load_dotenv()
 
@@ -105,10 +105,11 @@ def bm25_search(queries: list[str], n_per_query: int = 20) -> list[dict]:
 
         for idx in top_indices:
             if scores[idx] > 0:
+                chunk = chunks[idx]
                 all_results.append({
                     "id": f"chunk_{idx}",
-                    "text": chunks[idx].text,
-                    "metadata": chunks[idx].metadata,
+                    "text": chunk["text"],
+                    "metadata": chunk["metadata"],
                     "score": float(scores[idx]),
                     "source": "bm25"
                 })
