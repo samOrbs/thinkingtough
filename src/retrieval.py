@@ -6,6 +6,7 @@ Cost per query: ~$0.0003 (query expansion only).
 
 import os
 import re
+import json
 import pickle
 from pathlib import Path
 from dotenv import load_dotenv
@@ -52,10 +53,26 @@ def embed_query(query: str) -> list[float]:
     return result.embeddings[0].values
 
 
+def classify_query(query: str) -> str:
+    """Classify query type for smarter retrieval routing."""
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=f"""Classify this question about a sports psychology book into ONE category.
+Categories: factual, conceptual, comparative, page_specific, summary, chat
+
+Question: {query}
+
+Return ONLY the category name, nothing else."""
+    )
+    category = response.text.strip().lower().replace(" ", "_")
+    valid = {"factual", "conceptual", "comparative", "page_specific", "summary", "chat"}
+    return category if category in valid else "factual"
+
+
 def expand_query(query: str, n_variants: int = 2) -> list[str]:
     """Generate query variants for broader retrieval."""
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         contents=f"""Generate {n_variants} alternative search queries for finding
 information in a book about mental toughness training for sports by James Loehr.
 
@@ -65,6 +82,22 @@ Return one query per line, no numbering, no explanations."""
     )
     variants = [q.strip() for q in response.text.strip().split("\n") if q.strip()]
     return [query] + variants[:n_variants]
+
+
+def hyde_query(query: str) -> str:
+    """HyDE: Generate a hypothetical answer, use it as search query.
+    Better for conceptual queries where the answer vocabulary differs from the question.
+    """
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=f"""You are an expert on "The New Toughness Training for Sports" by James Loehr.
+Write a brief (2-3 sentence) answer to this question as if quoting from the book:
+
+Question: {query}
+
+Write ONLY the hypothetical answer passage, no preamble."""
+    )
+    return response.text.strip()
 
 
 def vector_search(queries: list[str], n_per_query: int = 20) -> list[dict]:
@@ -138,6 +171,57 @@ def reciprocal_rank_fusion(result_lists: list[list[dict]], k: int = 60) -> list[
     return [{**doc_data[doc_id], "rrf_score": score} for doc_id, score in merged]
 
 
+def rerank(query: str, results: list[dict], top_k: int = 5) -> list[dict]:
+    """Rerank results using Gemini 2.5 Flash as a cross-encoder.
+    Scores each chunk's relevance to the query, returns top-k.
+    Cost: ~$0.0002 per query.
+    """
+    if not results:
+        return results
+
+    candidates = results[:15]  # Rerank top-15 from RRF
+
+    # Build scoring prompt
+    chunks_text = ""
+    for i, r in enumerate(candidates):
+        # Use original text if available (strip contextual prefix for display)
+        text = r["metadata"].get("original_text", r["text"])[:300]
+        page = r["metadata"].get("page_number", "?")
+        chunks_text += f"\n[{i}] (Page {page}) {text}\n"
+
+    prompt = f"""Rate the relevance of each text chunk to the query. Score 0-10 where 10 is perfectly relevant.
+
+Query: {query}
+
+Chunks:
+{chunks_text}
+
+Return ONLY a JSON array of scores in order, like [8, 3, 7, ...]. No explanations."""
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        # Parse scores
+        scores_text = response.text.strip()
+        # Extract JSON array from response
+        match = re.search(r'\[[\d\s,\.]+\]', scores_text)
+        if match:
+            scores = json.loads(match.group())
+        else:
+            return results[:top_k]
+
+        # Sort by reranker score
+        scored = list(zip(candidates[:len(scores)], scores))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [r for r, s in scored[:top_k]]
+
+    except Exception as e:
+        # Fallback to RRF ordering if reranking fails
+        return results[:top_k]
+
+
 def assemble_context(results: list[dict], max_tokens: int = 4000, top_k: int = 5) -> tuple[str, list[dict]]:
     """Assemble retrieved chunks into a context string."""
     context_parts = []
@@ -158,19 +242,28 @@ def assemble_context(results: list[dict], max_tokens: int = 4000, top_k: int = 5
 
 
 def retrieve(query: str, top_k: int = 5) -> tuple[str, list[dict]]:
-    """Complete retrieval pipeline: query -> context string."""
-    # 1. Expand query
-    queries = expand_query(query)
+    """Complete retrieval pipeline: classify -> expand/HyDE -> search -> fuse -> rerank -> assemble."""
+    # 1. Classify query type
+    query_type = classify_query(query)
 
-    # 2. Parallel search
+    # 2. Expand query + optionally use HyDE for conceptual queries
+    queries = expand_query(query)
+    if query_type in ("conceptual", "summary", "comparative"):
+        hyde_answer = hyde_query(query)
+        queries.append(hyde_answer)
+
+    # 3. Parallel search
     vector_results = vector_search(queries)
     bm25_results = bm25_search(queries)
 
-    # 3. Fuse
+    # 4. Fuse
     fused = reciprocal_rank_fusion([vector_results, bm25_results])
 
-    # 4. Assemble context
-    context, used_chunks = assemble_context(fused, top_k=top_k)
+    # 5. Rerank top candidates
+    reranked = rerank(query, fused, top_k=top_k)
+
+    # 6. Assemble context
+    context, used_chunks = assemble_context(reranked, top_k=top_k)
 
     return context, used_chunks
 

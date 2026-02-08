@@ -1,10 +1,11 @@
 """
 Phase 4: Generation Layer
-System prompt, LLM generation with Gemini, streaming support.
-Cost per query: ~$0.001 with Gemini 2.0 Flash.
+System prompt, LLM generation with Gemini, streaming support, response validation.
+Cost per query: ~$0.001 with Gemini 2.5 Flash.
 """
 
 import os
+import re
 from dotenv import load_dotenv
 from google import genai
 
@@ -46,23 +47,72 @@ def build_prompt(query: str, context: str, history: list[dict] = None) -> str:
     return "\n\n".join(parts)
 
 
+def validate_response(response_text: str, used_chunks: list[dict]) -> dict:
+    """Validate that [Page X] citations in the response actually exist in retrieved context.
+    Returns dict with 'valid_pages', 'hallucinated_pages', and optional 'warning'.
+    """
+    # Extract all [Page X] citations from response
+    cited_pages = set()
+    for match in re.finditer(r'\[Page\s+(\d+)\]', response_text):
+        cited_pages.add(int(match.group(1)))
+
+    if not cited_pages:
+        return {"valid_pages": set(), "hallucinated_pages": set(), "warning": None}
+
+    # Build set of pages actually present in retrieved context
+    context_pages = set()
+    for chunk in used_chunks:
+        meta = chunk.get("metadata", {})
+        # Single page
+        if "page_number" in meta:
+            context_pages.add(int(meta["page_number"]))
+        # Page range end
+        if "page_end" in meta:
+            start = int(meta["page_number"])
+            end = int(meta["page_end"])
+            context_pages.update(range(start, end + 1))
+        # Comma-separated pages string (from ChromaDB)
+        if "pages" in meta and isinstance(meta["pages"], str):
+            for p in meta["pages"].split(","):
+                p = p.strip()
+                if p.isdigit():
+                    context_pages.add(int(p))
+
+    valid = cited_pages & context_pages
+    hallucinated = cited_pages - context_pages
+
+    warning = None
+    if hallucinated:
+        pages_str = ", ".join(str(p) for p in sorted(hallucinated))
+        warning = (
+            f"\n\n> **Note:** Page(s) {pages_str} cited above were not in the retrieved "
+            f"context — these references may be approximate."
+        )
+
+    return {
+        "valid_pages": valid,
+        "hallucinated_pages": hallucinated,
+        "warning": warning
+    }
+
+
 def generate(query: str, context: str, history: list[dict] = None) -> str:
-    """Generate a response using Gemini 2.0 Flash."""
+    """Generate a response using Gemini 2.5 Flash."""
     prompt = build_prompt(query, context, history)
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         contents=prompt
     )
     return response.text
 
 
 def generate_streaming(query: str, context: str, history: list[dict] = None):
-    """Generate a streaming response using Gemini 2.0 Flash."""
+    """Generate a streaming response using Gemini 2.5 Flash."""
     prompt = build_prompt(query, context, history)
 
     response = client.models.generate_content_stream(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         contents=prompt
     )
     for chunk in response:

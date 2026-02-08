@@ -1,0 +1,223 @@
+{
+  "nodes": [
+    {
+      "id": "title",
+      "type": "text",
+      "x": 200,
+      "y": -400,
+      "width": 800,
+      "height": 100,
+      "text": "# Feature Roadmap\n## Planned Improvements & New Features"
+    },
+
+    {
+      "id": "g_doing",
+      "type": "group",
+      "x": -100,
+      "y": -200,
+      "width": 2400,
+      "height": 700,
+      "color": "1",
+      "label": "COMPLETED — All 5 Improvements Done"
+    },
+    {
+      "id": "f1_migrate",
+      "type": "text",
+      "x": 0,
+      "y": -100,
+      "width": 350,
+      "height": 170,
+      "color": "1",
+      "text": "**1. Migrate to gemini-2.5-flash**\nAll API calls migrated\nFiles: `generation.py`, `retrieval.py`\nEffort: 5 min | Cost: $0\nStatus: ✅ DONE"
+    },
+    {
+      "id": "f2_enrich",
+      "type": "text",
+      "x": 420,
+      "y": -100,
+      "width": 350,
+      "height": 170,
+      "color": "1",
+      "text": "**2. Contextual Enrichment**\nAnthropic method: prepend LLM context\nto each chunk before embedding\n67% fewer retrieval failures\nActual cost: ~$0.35 one-time\nStatus: ✅ DONE"
+    },
+    {
+      "id": "f3_rerank",
+      "type": "text",
+      "x": 840,
+      "y": -100,
+      "width": 350,
+      "height": 170,
+      "color": "1",
+      "text": "**3. LLM Reranker**\nGemini 2.5 Flash cross-encoder\n(BGE too heavy — needs PyTorch)\nScores top-15 → returns top-5\nCost: ~$0.0002/query\nStatus: ✅ DONE"
+    },
+    {
+      "id": "f6_classify",
+      "type": "text",
+      "x": 1260,
+      "y": -100,
+      "width": 350,
+      "height": 170,
+      "color": "1",
+      "text": "**4. Query Classification + HyDE**\n6 types: factual, conceptual, etc.\nHyDE for conceptual queries\nBetter routing of different Q types\nCost: ~$0.0005/query\nStatus: ✅ DONE"
+    },
+    {
+      "id": "f7_valid",
+      "type": "text",
+      "x": 1680,
+      "y": -100,
+      "width": 350,
+      "height": 170,
+      "color": "1",
+      "text": "**5. Response Validation**\nCheck cited pages exist in context\nFlag hallucinated citations\nAppends warning note to user\nCost: $0 (regex, no API)\nStatus: ✅ DONE"
+    },
+    {
+      "id": "f_impact",
+      "type": "text",
+      "x": 0,
+      "y": 150,
+      "width": 800,
+      "height": 80,
+      "text": "**Achieved combined impact:**\nRetrieval accuracy: +67% (enrichment) + better precision (LLM reranker)\nQuery handling: classify → expand → HyDE → search → rerank\nTrust: validated citations, hallucinated page refs flagged to user"
+    },
+    {
+      "id": "f_cost",
+      "type": "text",
+      "x": 900,
+      "y": 150,
+      "width": 500,
+      "height": 80,
+      "text": "**Total cost for all improvements:**\nOne-time: ~$0.35 (contextual enrichment re-embed)\nPer-query: +~$0.001 (classify + HyDE + rerank)\nModel migration: free (gemini-2.5-flash same pricing)"
+    },
+
+    {
+      "id": "g_planned",
+      "type": "group",
+      "x": -100,
+      "y": 620,
+      "width": 2400,
+      "height": 450,
+      "color": "5",
+      "label": "PLANNED — Next Up After Current Work"
+    },
+    {
+      "id": "f4_discord",
+      "type": "text",
+      "x": 0,
+      "y": 720,
+      "width": 400,
+      "height": 200,
+      "color": "5",
+      "text": "**Discord Bot**\n`discord.py` integration\nSame retrieval + generation pipeline\nBot listens in channel, answers questions\nSupports multi-turn via thread context\nStreaming not available (send full msg)\n\nEffort: ~1hr | Cost: $0/month (bot hosting)\nStatus: ⏳ PLANNED"
+    },
+    {
+      "id": "f5_deploy",
+      "type": "text",
+      "x": 480,
+      "y": 720,
+      "width": 400,
+      "height": 200,
+      "color": "5",
+      "text": "**Cloud Deployment (Railway/Heroku)**\nAlways-on, public URL\nOptions:\n- Railway (persistent storage, free tier)\n- Render (persistent disk)\n- Heroku + Docker (bake chroma in image)\nDocker container with persistent volume\n\nEffort: ~1hr | Cost: ~$5-7/month\nStatus: ⏳ PLANNED"
+    },
+    {
+      "id": "f_discord_reqs",
+      "type": "text",
+      "x": 960,
+      "y": 720,
+      "width": 400,
+      "height": 200,
+      "color": "5",
+      "text": "**Discord Bot Requirements**\n1. Discord Developer App + Bot Token\n2. `discord.py` package\n3. `src/discord_bot.py` — new file\n4. Slash command: `/ask <question>`\n5. Thread-based conversations\n6. Page citation formatting for Discord\n7. Rate limiting (cost control)"
+    },
+    {
+      "id": "f_deploy_reqs",
+      "type": "text",
+      "x": 1440,
+      "y": 720,
+      "width": 400,
+      "height": 200,
+      "color": "5",
+      "text": "**Deployment Requirements**\n1. `Dockerfile` — Python 3.12-slim\n2. `Procfile` or `railway.json`\n3. Persistent volume for `data/`\n4. Environment vars for API keys\n5. Health check endpoint\n6. Both Chainlit + Discord bot\n7. Auto-restart on crash"
+    },
+
+    {
+      "id": "g_future",
+      "type": "group",
+      "x": -100,
+      "y": 1200,
+      "width": 2400,
+      "height": 300,
+      "color": "3",
+      "label": "FUTURE — Nice to Have"
+    },
+    {
+      "id": "ff_raptor",
+      "type": "text",
+      "x": 0,
+      "y": 1290,
+      "width": 300,
+      "height": 120,
+      "color": "3",
+      "text": "**RAPTOR Summaries**\nMulti-level abstractions\nL0: chunks → L3: book summary\nBetter for \"what's the book about?\"\nStatus: ⏳ FUTURE"
+    },
+    {
+      "id": "ff_agents",
+      "type": "text",
+      "x": 380,
+      "y": 1290,
+      "width": 300,
+      "height": 120,
+      "color": "3",
+      "text": "**Agentic Tools**\nNotes, flashcards, study plans\nChapter summaries on demand\nNative tool use API\nStatus: ⏳ FUTURE"
+    },
+    {
+      "id": "ff_eval",
+      "type": "text",
+      "x": 760,
+      "y": 1290,
+      "width": 300,
+      "height": 120,
+      "color": "3",
+      "text": "**Evaluation Suite**\nDeepEval (self-explaining metrics)\n50+ gold Q&A pairs\nCI/CD integration\nStatus: ⏳ FUTURE"
+    },
+    {
+      "id": "ff_routing",
+      "type": "text",
+      "x": 1140,
+      "y": 1290,
+      "width": 300,
+      "height": 120,
+      "color": "3",
+      "text": "**Model Routing**\nSimple → gemini-2.5-flash\nComplex → claude-sonnet-4-5\nSaves ~66% cost\nStatus: ⏳ FUTURE"
+    },
+    {
+      "id": "ff_prompt_cache",
+      "type": "text",
+      "x": 1520,
+      "y": 1290,
+      "width": 300,
+      "height": 120,
+      "color": "3",
+      "text": "**Prompt Caching**\nCache system prompt + book summary\n90% savings on static tokens\nAvailable on both Gemini + Claude\nStatus: ⏳ FUTURE"
+    },
+    {
+      "id": "ff_memory",
+      "type": "text",
+      "x": 1900,
+      "y": 1290,
+      "width": 300,
+      "height": 120,
+      "color": "3",
+      "text": "**Advanced Memory**\nTurn compression (>10 turns)\nSession-end summaries\nFact extraction per response\nCross-session knowledge\nStatus: ⏳ FUTURE"
+    }
+  ],
+  "edges": [
+    {"id": "e_flow_1", "fromNode": "f1_migrate", "fromSide": "right", "toNode": "f2_enrich", "toSide": "left", "color": "#e94560", "label": "then"},
+    {"id": "e_flow_2", "fromNode": "f2_enrich", "fromSide": "right", "toNode": "f3_rerank", "toSide": "left", "color": "#e94560", "label": "then"},
+    {"id": "e_flow_3", "fromNode": "f3_rerank", "fromSide": "right", "toNode": "f6_classify", "toSide": "left", "color": "#e94560", "label": "then"},
+    {"id": "e_flow_4", "fromNode": "f6_classify", "fromSide": "right", "toNode": "f7_valid", "toSide": "left", "color": "#e94560", "label": "then"},
+    {"id": "e_next_1", "fromNode": "f7_valid", "fromSide": "bottom", "toNode": "f4_discord", "toSide": "top", "color": "#10b981", "label": "next phase"},
+    {"id": "e_next_2", "fromNode": "f4_discord", "fromSide": "right", "toNode": "f5_deploy", "toSide": "left", "color": "#10b981", "label": "then"},
+    {"id": "e_future", "fromNode": "f5_deploy", "fromSide": "bottom", "toNode": "ff_raptor", "toSide": "top", "color": "#8b5cf6", "label": "future backlog"}
+  ]
+}

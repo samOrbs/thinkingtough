@@ -5,7 +5,7 @@ Run with: chainlit run app.py
 
 import chainlit as cl
 from src.retrieval import retrieve
-from src.generation import generate_streaming
+from src.generation import generate_streaming, validate_response
 from src.memory import create_session, save_turn, get_history
 
 
@@ -43,6 +43,13 @@ async def main(message: cl.Message):
         await msg.stream_token(token)
 
     await msg.update()
+
+    # Validate citations against retrieved context
+    validation = validate_response(full_response, sources)
+    if validation["warning"]:
+        full_response += validation["warning"]
+        msg.content = full_response
+        await msg.update()
 
     # Add source references
     if sources:

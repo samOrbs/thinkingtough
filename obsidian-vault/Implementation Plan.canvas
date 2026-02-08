@@ -305,7 +305,7 @@
       "width": 280,
       "height": 100,
       "color": "5",
-      "text": "**LLM Generation**\nGemini 2.0 Flash (→2.5 soon)\nSystem prompt + context\n+ conversation history\nStreaming output"
+      "text": "**LLM Generation**\nGemini 2.5 Flash ✅ migrated\nSystem prompt + context\n+ conversation history\nStreaming output"
     },
     {
       "id": "s4_chainlit",
@@ -384,7 +384,7 @@
       "width": 280,
       "height": 90,
       "color": "3",
-      "text": "**Contextual Enrichment**\nAnthropic method\n67% better retrieval\n+$0.35 one-time"
+      "text": "**Contextual Enrichment** ✅ DONE\nAnthropic method\n67% better retrieval\nCost: ~$0.35 one-time"
     },
     {
       "id": "sf_rerank",
@@ -394,7 +394,7 @@
       "width": 260,
       "height": 90,
       "color": "3",
-      "text": "**Cohere Reranking**\nCross-encoder reranker\nMuch better precision\n+$0.002/query"
+      "text": "**LLM Reranker** ✅ DONE\nGemini 2.5 Flash cross-encoder\nScores top-15 → returns top-5\nCost: ~$0.0002/query"
     },
     {
       "id": "sf_raptor",

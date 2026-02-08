@@ -144,6 +144,63 @@ def semantic_chunk(
     return chunks
 
 
+def contextual_enrich(chunks: list[Chunk], pages: list[tuple[int, str]], batch_size: int = 20) -> list[Chunk]:
+    """Anthropic Contextual Enrichment: prepend LLM-generated context to each chunk.
+    This situates each chunk within the broader document, improving retrieval by ~67%.
+    Cost: ~$0.35 one-time for 146 chunks with Gemini 2.5 Flash.
+    """
+    # Build a page lookup for surrounding context
+    page_texts = {num: text for num, text in pages}
+
+    enriched = []
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i:i + batch_size]
+        for chunk in batch:
+            page_num = chunk.metadata["page_number"]
+            # Get surrounding page text for context (current page + neighbors)
+            surrounding = ""
+            for p in range(max(page_num - 1, min(page_texts.keys())), min(page_num + 2, max(page_texts.keys()) + 1)):
+                if p in page_texts:
+                    surrounding += page_texts[p][:500] + "\n"
+
+            prompt = f"""<document>
+{surrounding[:1500]}
+</document>
+
+Here is a chunk from that document:
+<chunk>
+{chunk.text[:800]}
+</chunk>
+
+Give a short (1-2 sentence) context that situates this chunk within the book "The New Toughness Training for Sports" by James Loehr. Focus on what topic/concept this chunk discusses and where it fits in the book's structure. Return ONLY the context sentence, nothing else."""
+
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt
+                )
+                context_prefix = response.text.strip()
+            except Exception as e:
+                print(f"  Enrichment failed for chunk {chunk.metadata['chunk_index']}: {e}")
+                context_prefix = ""
+
+            # Prepend context to chunk text
+            if context_prefix:
+                enriched_text = f"{context_prefix}\n\n{chunk.text}"
+            else:
+                enriched_text = chunk.text
+
+            enriched.append(Chunk(
+                text=enriched_text,
+                metadata={**chunk.metadata, "original_text": chunk.text}
+            ))
+
+        print(f"  Enriched batch {i // batch_size + 1}/{(len(chunks) - 1) // batch_size + 1}")
+
+    print(f"Enriched {len(enriched)} chunks with contextual prefixes")
+    return enriched
+
+
 def embed_chunks(chunks: list[Chunk], batch_size: int = 100) -> list[list[float]]:
     """Generate embeddings using Gemini text-embedding-004."""
     all_embeddings = []
@@ -254,15 +311,19 @@ def run_indexing():
     # 2. Chunk
     chunks = semantic_chunk(pages)
 
-    # 3. Embed
+    # 3. Contextual Enrichment (Anthropic method — ~$0.35)
+    print("\nContextual enrichment (Anthropic method)...")
+    chunks = contextual_enrich(chunks, pages)
+
+    # 4. Embed enriched chunks
     print("\nGenerating embeddings...")
     embeddings = embed_chunks(chunks)
 
-    # 4. Store in ChromaDB
+    # 5. Store in ChromaDB
     print("\nStoring in ChromaDB...")
     store_in_chromadb(chunks, embeddings)
 
-    # 5. Build BM25 index
+    # 6. Build BM25 index
     print("\nBuilding BM25 index...")
     build_bm25_index(chunks)
 
