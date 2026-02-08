@@ -117,7 +117,7 @@
       "width": 250,
       "height": 100,
       "color": "6",
-      "text": "**INPUT**\n232 markdown files\n+ `book_structure.json`\nCombine into full text"
+      "text": "**INPUT**\n202 content pages\n(skip pp 1-15, 218-232)\nCombine into full text"
     },
     {
       "id": "s2_chunk",
@@ -127,7 +127,7 @@
       "width": 280,
       "height": 100,
       "color": "6",
-      "text": "**Semantic Chunking**\nParagraph-boundary splits\n~512 tokens, 100 overlap\nPreserve page/chapter metadata"
+      "text": "**Semantic Chunking**\nCross-page paragraph splits\n~400 tokens, 80 overlap\nDedup, skip front/back matter"
     },
     {
       "id": "s2_embed",
@@ -137,7 +137,7 @@
       "width": 280,
       "height": 100,
       "color": "6",
-      "text": "**Gemini Embeddings**\n`text-embedding-004`\n768 dimensions\nBatch all chunks"
+      "text": "**Gemini Embeddings**\n`gemini-embedding-001`\n3072 dimensions (#1 MTEB)\nBatch 100 at a time"
     },
     {
       "id": "s2_chroma",
@@ -305,7 +305,7 @@
       "width": 280,
       "height": 100,
       "color": "5",
-      "text": "**LLM Generation**\nGemini 2.0 Flash\nSystem prompt + context\n+ conversation history\nStreaming output"
+      "text": "**LLM Generation**\nGemini 2.0 Flash (→2.5 soon)\nSystem prompt + context\n+ conversation history\nStreaming output"
     },
     {
       "id": "s4_chainlit",
