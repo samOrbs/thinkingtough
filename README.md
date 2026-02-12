@@ -174,6 +174,57 @@ toughness/
 └── CLAUDE.md                # Build rules for Claude Code
 ```
 
+## Adding a New Book from Internet Archive
+
+This project includes a two-step scraper for capturing books from [Internet Archive](https://archive.org) as page images, ready for the OCR pipeline.
+
+### Prerequisites
+
+- A browser with DevTools (Chrome/Edge/Firefox)
+- Python with Pillow (`pip install Pillow`)
+
+### Step 1: Capture Pages (Browser Console)
+
+1. Go to the book on Internet Archive (e.g. `archive.org/details/bookid`)
+2. Click **Borrow** or **Read** to open the BookReader
+3. Open DevTools (`F12` → **Console** tab)
+4. Paste the contents of `internechive PDF builder/capture_pages.js` and press Enter
+5. The script will:
+   - Iterate through every page in the BookReader
+   - Capture each rendered page image as a JPEG
+   - Package all pages into a `.tar` file
+   - Automatically download the tar when complete
+6. Progress is logged in the console — expect ~1.5s per page
+
+### Step 2: Extract Pages & Build PDF
+
+```bash
+# Basic usage — extracts JPGs to pages/ and builds a PDF
+python "internechive PDF builder/build_pdf.py" ~/Downloads/mindfulathletese0000mumf_pages.tar
+
+# With custom output name
+python "internechive PDF builder/build_pdf.py" ~/Downloads/mindfulathletese0000mumf_pages.tar "The Mindful Athlete"
+```
+
+This produces:
+- `pages/page_0001.jpg` through `page_NNNN.jpg` — individual page images
+- `<name>.pdf` — combined PDF of all pages
+
+### Step 3: Run the RAG Pipeline
+
+```bash
+# OCR all pages to markdown
+python -m src.ocr
+
+# Build the search index (chunk, enrich, embed, store)
+python -m src.indexing
+
+# Launch the chatbot
+chainlit run app.py
+```
+
+> **Note:** Update the page skip ranges in `src/indexing.py` (`SKIP_PAGES`) for each book's front/back matter.
+
 ## Roadmap
 
 - [ ] Discord bot (`/ask` slash command, thread-based conversations)
