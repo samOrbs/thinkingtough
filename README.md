@@ -188,7 +188,7 @@ This project includes a two-step scraper for capturing books from [Internet Arch
 1. Go to the book on Internet Archive (e.g. `archive.org/details/bookid`)
 2. Click **Borrow** or **Read** to open the BookReader
 3. Open DevTools (`F12` → **Console** tab)
-4. Paste the contents of `internechive PDF builder/capture_pages.js` and press Enter
+4. Paste the contents of `scraper/capture_pages.js` and press Enter
 5. The script will:
    - Iterate through every page in the BookReader
    - Capture each rendered page image as a JPEG
@@ -200,10 +200,10 @@ This project includes a two-step scraper for capturing books from [Internet Arch
 
 ```bash
 # Basic usage — extracts JPGs to pages/ and builds a PDF
-python "internechive PDF builder/build_pdf.py" ~/Downloads/mindfulathletese0000mumf_pages.tar
+python "scraper/build_pdf.py" ~/Downloads/mindfulathletese0000mumf_pages.tar
 
 # With custom output name
-python "internechive PDF builder/build_pdf.py" ~/Downloads/mindfulathletese0000mumf_pages.tar "The Mindful Athlete"
+python "scraper/build_pdf.py" ~/Downloads/mindfulathletese0000mumf_pages.tar "The Mindful Athlete"
 ```
 
 This produces:
