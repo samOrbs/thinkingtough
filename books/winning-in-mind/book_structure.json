@@ -1,0 +1,11 @@
+{
+  "book": "winning-in-mind",
+  "total_pages": 1,
+  "pages": [],
+  "failed": [
+    {
+      "page": 11,
+      "error": "expected string or bytes-like object, got 'NoneType'"
+    }
+  ]
+}

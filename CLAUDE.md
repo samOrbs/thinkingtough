@@ -1,4 +1,4 @@
-# Project Rules — Toughness Training RAG Chatbot
+# Project Rules — Sports Psychology RAG Chatbot (Multi-Book)
 
 ## Canvas Diagrams — ALWAYS UPDATE
 Whenever you make changes to the codebase, you MUST update the relevant Obsidian canvas diagrams:
@@ -15,9 +15,21 @@ ALWAYS update the Work Log with what was done.
 - **Cost check before API calls** — calculate and confirm cost before running embedding/generation batches
 - **Always `git commit`** after completing a phase or significant change
 
+## Project Structure (Multi-Book)
+- `src/books.py` — BookConfig dataclass, discover/load functions
+- `books/{slug}/config.json` — per-book configuration
+- `books/{slug}/pages/` — source page images (JPG)
+- `books/{slug}/pages_markdown/` — OCR'd markdown
+- `books/{slug}/chroma_db/` — per-book vector store
+- `books/{slug}/bm25_index.pkl` — per-book keyword index
+- `data/memory.db` — shared SQLite (conversations, sessions)
+
 ## Technical Notes
 - SDK: `google.genai` (NOT deprecated `google.generativeai`)
 - Embeddings: `gemini-embedding-001` (3072 dims)
 - BM25 pickle: store chunks as plain dicts (not Chunk objects) to avoid module path issues
-- Skip pages 1-15 and 218-232 when indexing (front/back matter)
+- Skip pages configured per book in `config.json` (`skip_pages.front`, `skip_pages.back`)
 - ChromaDB metadata: lists must be stringified
+- Collection name: `slug.replace("-", "_")`
+- Chunk IDs namespaced as `{slug}:{chunk_id}` in retrieval
+- PDF support: PyMuPDF auto-detects text vs scanned PDFs

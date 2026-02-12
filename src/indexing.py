@@ -1,7 +1,10 @@
 """
-Phase 2: Indexing Pipeline
+Indexing Pipeline — Per-book chunking, embedding, and storage.
 Chunks text, generates embeddings, stores in ChromaDB + BM25.
-Cost: ~$0.001 for embedding all chunks.
+
+Usage:
+    python -m src.indexing --book toughness-training
+    python -m src.indexing --book inner-game-of-tennis
 """
 
 import os
@@ -14,18 +17,11 @@ from dotenv import load_dotenv
 from google import genai
 import chromadb
 from rank_bm25 import BM25Okapi
+from src.books import BookConfig, load_config
 
 load_dotenv()
 
-# Configuration
-MARKDOWN_DIR = Path(__file__).parent.parent / "data" / "pages_markdown"
-CHROMA_DIR = Path(__file__).parent.parent / "data" / "chroma_db"
-BM25_PATH = Path(__file__).parent.parent / "data" / "bm25_index.pkl"
-STRUCTURE_PATH = Path(__file__).parent.parent / "data" / "book_structure.json"
-
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-
-COLLECTION_NAME = "toughness_training"
 
 
 @dataclass
@@ -34,32 +30,31 @@ class Chunk:
     metadata: dict = field(default_factory=dict)
 
 
-def load_pages() -> list[tuple[int, str]]:
-    """Load all markdown pages, return list of (page_number, text).
-    Filters out front matter (covers, copyright, ToC) and back matter
-    (library stamps, back cover) which pollute retrieval.
-    """
-    # Pages to skip: covers, copyright, other-book noise, ToC, bibliography, index, library stamps
-    # 1-15: covers, copyright, digitization notices, other-book pages, table of contents
-    # 218-232: bibliography, book index, library stamps, back cover
-    SKIP_PAGES = set(range(1, 16)) | set(range(218, 233))
+def load_pages(book: BookConfig) -> list[tuple[int, str]]:
+    """Load all markdown pages for a book, filtering front/back matter."""
+    skip_pages = book.skip_page_set
+    markdown_dir = book.markdown_dir
+
+    if not markdown_dir.exists():
+        raise FileNotFoundError(f"No markdown directory found: {markdown_dir}")
 
     pages = []
-    for md_file in sorted(MARKDOWN_DIR.glob("page_*.md")):
+    for md_file in sorted(markdown_dir.glob("page_*.md")):
         page_num = int(md_file.stem.split("_")[1])
-        if page_num in SKIP_PAGES:
+        if page_num in skip_pages:
             continue
         text = md_file.read_text(encoding="utf-8")
         # Remove HTML comments (page markers)
         text = re.sub(r"<!--.*?-->", "", text).strip()
         if text.strip() and len(text.split()) > 20:
             pages.append((page_num, text))
-    print(f"Loaded {len(pages)} content pages (skipped front/back matter)")
+    print(f"Loaded {len(pages)} content pages for '{book.title}' (skipped front/back matter)")
     return pages
 
 
 def semantic_chunk(
     pages: list[tuple[int, str]],
+    book: BookConfig,
     max_tokens: int = 400,
     overlap_tokens: int = 80
 ) -> list[Chunk]:
@@ -103,7 +98,9 @@ def semantic_chunk(
                     "page_end": page_list[-1],
                     "pages": page_list,
                     "chunk_index": len(chunks),
-                    "word_count": current_tokens
+                    "word_count": current_tokens,
+                    "book_slug": book.slug,
+                    "book_title": book.title,
                 }
             ))
 
@@ -136,7 +133,9 @@ def semantic_chunk(
                 "page_end": page_list[-1],
                 "pages": page_list,
                 "chunk_index": len(chunks),
-                "word_count": current_tokens
+                "word_count": current_tokens,
+                "book_slug": book.slug,
+                "book_title": book.title,
             }
         ))
 
@@ -144,10 +143,9 @@ def semantic_chunk(
     return chunks
 
 
-def contextual_enrich(chunks: list[Chunk], pages: list[tuple[int, str]], batch_size: int = 20) -> list[Chunk]:
+def contextual_enrich(chunks: list[Chunk], pages: list[tuple[int, str]], book: BookConfig, batch_size: int = 20) -> list[Chunk]:
     """Anthropic Contextual Enrichment: prepend LLM-generated context to each chunk.
     This situates each chunk within the broader document, improving retrieval by ~67%.
-    Cost: ~$0.35 one-time for 146 chunks with Gemini 2.5 Flash.
     """
     # Build a page lookup for surrounding context
     page_texts = {num: text for num, text in pages}
@@ -172,7 +170,7 @@ Here is a chunk from that document:
 {chunk.text[:800]}
 </chunk>
 
-Give a short (1-2 sentence) context that situates this chunk within the book "The New Toughness Training for Sports" by James Loehr. Focus on what topic/concept this chunk discusses and where it fits in the book's structure. Return ONLY the context sentence, nothing else."""
+Give a short (1-2 sentence) context that situates this chunk within the book "{book.title}" by {book.author}. Focus on what topic/concept this chunk discusses and where it fits in the book's structure. Return ONLY the context sentence, nothing else."""
 
             try:
                 response = client.models.generate_content(
@@ -202,7 +200,7 @@ Give a short (1-2 sentence) context that situates this chunk within the book "Th
 
 
 def embed_chunks(chunks: list[Chunk], batch_size: int = 100) -> list[list[float]]:
-    """Generate embeddings using Gemini text-embedding-004."""
+    """Generate embeddings using gemini-embedding-001."""
     all_embeddings = []
 
     for i in range(0, len(chunks), batch_size):
@@ -218,19 +216,20 @@ def embed_chunks(chunks: list[Chunk], batch_size: int = 100) -> list[list[float]
     return all_embeddings
 
 
-def store_in_chromadb(chunks: list[Chunk], embeddings: list[list[float]]):
-    """Store chunks and embeddings in ChromaDB."""
-    CHROMA_DIR.mkdir(parents=True, exist_ok=True)
-    chroma_client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+def store_in_chromadb(chunks: list[Chunk], embeddings: list[list[float]], book: BookConfig):
+    """Store chunks and embeddings in per-book ChromaDB."""
+    chroma_dir = book.chroma_dir
+    chroma_dir.mkdir(parents=True, exist_ok=True)
+    chroma_client = chromadb.PersistentClient(path=str(chroma_dir))
 
     # Delete existing collection if present
     try:
-        chroma_client.delete_collection(COLLECTION_NAME)
+        chroma_client.delete_collection(book.collection_name)
     except Exception:
         pass
 
     collection = chroma_client.create_collection(
-        name=COLLECTION_NAME,
+        name=book.collection_name,
         metadata={"hnsw:space": "cosine"}
     )
 
@@ -249,10 +248,10 @@ def store_in_chromadb(chunks: list[Chunk], embeddings: list[list[float]]):
         metadatas=chroma_metadatas
     )
 
-    print(f"Stored {len(chunks)} chunks in ChromaDB at {CHROMA_DIR}")
+    print(f"Stored {len(chunks)} chunks in ChromaDB at {chroma_dir}")
 
 
-def build_bm25_index(chunks: list[Chunk]):
+def build_bm25_index(chunks: list[Chunk], book: BookConfig):
     """Build and save BM25 keyword index.
     Stores chunks as plain dicts to avoid pickle module-path issues.
     """
@@ -262,17 +261,18 @@ def build_bm25_index(chunks: list[Chunk]):
     # Convert Chunk objects to plain dicts for pickle compatibility
     chunk_dicts = [{"text": c.text, "metadata": c.metadata} for c in chunks]
 
-    BM25_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(BM25_PATH, "wb") as f:
+    bm25_path = book.bm25_path
+    bm25_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(bm25_path, "wb") as f:
         pickle.dump({"bm25": bm25, "chunks": chunk_dicts}, f)
 
-    print(f"Built BM25 index over {len(chunks)} chunks, saved to {BM25_PATH}")
+    print(f"Built BM25 index over {len(chunks)} chunks, saved to {bm25_path}")
 
 
-def test_retrieval(query: str = "What is mental toughness?"):
-    """Quick test that retrieval works."""
-    chroma_client = chromadb.PersistentClient(path=str(CHROMA_DIR))
-    collection = chroma_client.get_collection(COLLECTION_NAME)
+def test_retrieval(book: BookConfig, query: str = "What is mental toughness?"):
+    """Quick test that retrieval works for a specific book."""
+    chroma_client = chromadb.PersistentClient(path=str(book.chroma_dir))
+    collection = chroma_client.get_collection(book.collection_name)
 
     # Embed query
     result = client.models.embed_content(
@@ -288,7 +288,7 @@ def test_retrieval(query: str = "What is mental toughness?"):
         include=["documents", "metadatas", "distances"]
     )
 
-    print(f"\nTest query: \"{query}\"")
+    print(f"\nTest query: \"{query}\" (book: {book.title})")
     print("-" * 50)
     for i, (doc, meta, dist) in enumerate(zip(
         results["documents"][0],
@@ -299,21 +299,21 @@ def test_retrieval(query: str = "What is mental toughness?"):
         print(f"  {doc[:200]}...")
 
 
-def run_indexing():
-    """Run the full indexing pipeline."""
+def run_indexing(book: BookConfig):
+    """Run the full indexing pipeline for a book."""
     print("=" * 60)
-    print("PHASE 2: INDEXING PIPELINE")
+    print(f"INDEXING: {book.title}")
     print("=" * 60)
 
     # 1. Load pages
-    pages = load_pages()
+    pages = load_pages(book)
 
     # 2. Chunk
-    chunks = semantic_chunk(pages)
+    chunks = semantic_chunk(pages, book)
 
-    # 3. Contextual Enrichment (Anthropic method — ~$0.35)
+    # 3. Contextual Enrichment
     print("\nContextual enrichment (Anthropic method)...")
-    chunks = contextual_enrich(chunks, pages)
+    chunks = contextual_enrich(chunks, pages, book)
 
     # 4. Embed enriched chunks
     print("\nGenerating embeddings...")
@@ -321,15 +321,14 @@ def run_indexing():
 
     # 5. Store in ChromaDB
     print("\nStoring in ChromaDB...")
-    store_in_chromadb(chunks, embeddings)
+    store_in_chromadb(chunks, embeddings, book)
 
     # 6. Build BM25 index
     print("\nBuilding BM25 index...")
-    build_bm25_index(chunks)
+    build_bm25_index(chunks, book)
 
-    # 6. Test
-    test_retrieval("What is mental toughness?")
-    test_retrieval("How does recovery work?")
+    # 7. Test
+    test_retrieval(book)
 
     print("\n" + "=" * 60)
     print("INDEXING COMPLETE")
@@ -337,4 +336,11 @@ def run_indexing():
 
 
 if __name__ == "__main__":
-    run_indexing()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Index a book for RAG retrieval")
+    parser.add_argument("--book", required=True, help="Book slug (e.g., toughness-training)")
+    args = parser.parse_args()
+
+    book = load_config(args.book)
+    run_indexing(book)

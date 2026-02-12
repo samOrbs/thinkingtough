@@ -367,20 +367,109 @@
     },
 
     {
-      "id": "g_future",
+      "id": "g_phase5",
       "type": "group",
       "x": -100,
       "y": 2380,
       "width": 2200,
+      "height": 530,
+      "color": "2",
+      "label": "BUILD STEP 5: Multi-Book System — Book Registry, Per-Book Indexing, UI Toggles"
+    },
+    {
+      "id": "s5_registry",
+      "type": "text",
+      "x": 0,
+      "y": 2480,
+      "width": 280,
+      "height": 120,
+      "color": "2",
+      "text": "**Book Registry**\n`src/books.py` — BookConfig\n`books/{slug}/config.json`\ndiscover_books()\nget_indexed_books()"
+    },
+    {
+      "id": "s5_migrate",
+      "type": "text",
+      "x": 370,
+      "y": 2480,
+      "width": 280,
+      "height": 120,
+      "color": "2",
+      "text": "**Data Migration**\nMove existing data to\n`books/toughness-training/`\nCopy PDF for inner-game\nPer-book directory structure"
+    },
+    {
+      "id": "s5_pdf",
+      "type": "text",
+      "x": 740,
+      "y": 2480,
+      "width": 280,
+      "height": 120,
+      "color": "2",
+      "text": "**PDF Support**\nPyMuPDF auto-detection\nText PDF → extract ($0)\nScanned PDF → OCR\nUpdated src/ocr.py"
+    },
+    {
+      "id": "s5_multibook",
+      "type": "text",
+      "x": 1110,
+      "y": 2480,
+      "width": 280,
+      "height": 120,
+      "color": "2",
+      "text": "**Multi-Book Pipeline**\nPer-book indexing\nMulti-book retrieval\nNamespaced IDs\nDynamic system prompt"
+    },
+    {
+      "id": "s5_ui",
+      "type": "text",
+      "x": 1480,
+      "y": 2480,
+      "width": 280,
+      "height": 120,
+      "color": "2",
+      "text": "**Chainlit Toggles**\nSwitch per book in settings\n[Book, Page X] citations\nBook selection persistence\nDynamic welcome message"
+    },
+    {
+      "id": "s5_index",
+      "type": "text",
+      "x": 1850,
+      "y": 2480,
+      "width": 240,
+      "height": 120,
+      "color": "2",
+      "text": "**Index 3 New Books**\nOCR + index each\n~$1.17 total cost\nUser approval required"
+    },
+    {
+      "id": "s5_cost",
+      "type": "text",
+      "x": 0,
+      "y": 2660,
+      "width": 500,
+      "height": 60,
+      "text": "**Cost:** OCR ~$0.12 + Enrichment ~$1.05 = **~$1.17 for 3 new books** | $0 for code changes"
+    },
+    {
+      "id": "s5_files",
+      "type": "text",
+      "x": 0,
+      "y": 2770,
+      "width": 500,
+      "height": 70,
+      "text": "**Files:** `src/books.py` NEW | `src/ocr.py` `src/indexing.py` `src/retrieval.py`\n`src/generation.py` `src/memory.py` `app.py` UPDATED | `books/*/config.json` NEW"
+    },
+
+    {
+      "id": "g_future",
+      "type": "group",
+      "x": -100,
+      "y": 3030,
+      "width": 2200,
       "height": 350,
       "color": "3",
-      "label": "FUTURE ENHANCEMENTS (After v1 is working)"
+      "label": "FUTURE ENHANCEMENTS"
     },
     {
       "id": "sf_enrich",
       "type": "text",
       "x": 0,
-      "y": 2470,
+      "y": 3120,
       "width": 280,
       "height": 90,
       "color": "3",
@@ -390,7 +479,7 @@
       "id": "sf_rerank",
       "type": "text",
       "x": 370,
-      "y": 2470,
+      "y": 3120,
       "width": 260,
       "height": 90,
       "color": "3",
@@ -400,7 +489,7 @@
       "id": "sf_raptor",
       "type": "text",
       "x": 720,
-      "y": 2470,
+      "y": 3120,
       "width": 260,
       "height": 90,
       "color": "3",
@@ -410,7 +499,7 @@
       "id": "sf_agents",
       "type": "text",
       "x": 1070,
-      "y": 2470,
+      "y": 3120,
       "width": 260,
       "height": 90,
       "color": "3",
@@ -420,7 +509,7 @@
       "id": "sf_routing",
       "type": "text",
       "x": 1420,
-      "y": 2470,
+      "y": 3120,
       "width": 260,
       "height": 90,
       "color": "3",
@@ -430,7 +519,7 @@
       "id": "sf_eval",
       "type": "text",
       "x": 1770,
-      "y": 2470,
+      "y": 3120,
       "width": 260,
       "height": 90,
       "color": "3",
@@ -466,6 +555,13 @@
     {"id": "e_s4_2", "fromNode": "s4_generate", "fromSide": "right", "toNode": "s4_chainlit", "toSide": "left", "color": "#10b981"},
     {"id": "e_s4_3", "fromNode": "s4_chainlit", "fromSide": "right", "toNode": "s4_memory", "toSide": "left", "color": "#10b981"},
     {"id": "e_s4_4", "fromNode": "s4_memory", "fromSide": "right", "toNode": "s4_verify", "toSide": "left", "color": "#10b981"},
-    {"id": "e_s4_5", "fromNode": "s4_verify", "fromSide": "right", "toNode": "s4_done", "toSide": "left", "color": "#10b981"}
+    {"id": "e_s4_5", "fromNode": "s4_verify", "fromSide": "right", "toNode": "s4_done", "toSide": "left", "color": "#10b981"},
+
+    {"id": "e_p4_to_p5", "fromNode": "s4_done", "fromSide": "bottom", "toNode": "s5_registry", "toSide": "top", "color": "#8b5cf6", "label": "Multi-book expansion"},
+    {"id": "e_s5_1", "fromNode": "s5_registry", "fromSide": "right", "toNode": "s5_migrate", "toSide": "left", "color": "#8b5cf6"},
+    {"id": "e_s5_2", "fromNode": "s5_migrate", "fromSide": "right", "toNode": "s5_pdf", "toSide": "left", "color": "#8b5cf6"},
+    {"id": "e_s5_3", "fromNode": "s5_pdf", "fromSide": "right", "toNode": "s5_multibook", "toSide": "left", "color": "#8b5cf6"},
+    {"id": "e_s5_4", "fromNode": "s5_multibook", "fromSide": "right", "toNode": "s5_ui", "toSide": "left", "color": "#8b5cf6"},
+    {"id": "e_s5_5", "fromNode": "s5_ui", "fromSide": "right", "toNode": "s5_index", "toSide": "left", "color": "#8b5cf6"}
   ]
 }

@@ -1,0 +1,11 @@
+{
+  "slug": "inner-game-of-tennis",
+  "title": "The Inner Game of Tennis",
+  "author": "W. Timothy Gallwey",
+  "total_pages": 127,
+  "skip_pages": {"front": [1, 8], "back": [122, 127]},
+  "source_type": "pdf",
+  "pdf_path": "source/InnerGameOfTennis.pdf",
+  "topics": "Self 1, Self 2, concentration, letting go, natural learning",
+  "short_description": "The classic guide to the mental side of peak performance"
+}

@@ -1,0 +1,24 @@
+{
+  "book": "mindful-athlete",
+  "total_pages": 1,
+  "pages": [
+    {
+      "page_number": 250,
+      "headings": [
+        {
+          "level": 1,
+          "text": "THE BOOK OF ISAIAH"
+        },
+        {
+          "level": 1,
+          "text": "What is a prophet?"
+        },
+        {
+          "level": 1,
+          "text": "What is prophecy?"
+        }
+      ]
+    }
+  ],
+  "failed": []
+}

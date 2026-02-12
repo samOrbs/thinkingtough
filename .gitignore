@@ -18,6 +18,15 @@ chroma_db/
 *.tar
 *.pdf
 
+# Per-book data directories (inside books/)
+books/*/pages/
+books/*/pages_markdown/
+books/*/chroma_db/
+books/*/source/
+
+# Shared data
+data/memory.db
+
 # OS
 .DS_Store
 Thumbs.db

@@ -1,8 +1,9 @@
 """
 Basic Memory: SQLite conversation persistence.
-Stores conversation turns for session continuity.
+Stores conversation turns and book selection for session continuity.
 """
 
+import json
 import sqlite3
 import uuid
 from pathlib import Path
@@ -27,6 +28,11 @@ def get_db():
         started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         last_active DATETIME DEFAULT CURRENT_TIMESTAMP
     )""")
+    # Add selected_books column if it doesn't exist
+    try:
+        conn.execute("ALTER TABLE sessions ADD COLUMN selected_books TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
     conn.commit()
     return conn
 
@@ -62,3 +68,27 @@ def get_history(session_id: str, limit: int = 20) -> list[dict]:
     ).fetchall()
     db.close()
     return [{"role": r[0], "content": r[1]} for r in reversed(rows)]
+
+
+def save_selected_books(session_id: str, slugs: list[str]):
+    """Persist the user's book selection for this session."""
+    db = get_db()
+    db.execute(
+        "UPDATE sessions SET selected_books = ? WHERE id = ?",
+        (json.dumps(slugs), session_id)
+    )
+    db.commit()
+    db.close()
+
+
+def get_selected_books(session_id: str) -> list[str] | None:
+    """Retrieve saved book selection for this session. Returns None if not set."""
+    db = get_db()
+    row = db.execute(
+        "SELECT selected_books FROM sessions WHERE id = ?",
+        (session_id,)
+    ).fetchone()
+    db.close()
+    if row and row[0]:
+        return json.loads(row[0])
+    return None

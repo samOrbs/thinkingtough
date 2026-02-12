@@ -1,0 +1,10 @@
+{
+  "slug": "mindful-athlete",
+  "title": "The Mindful Athlete",
+  "author": "George Mumford",
+  "total_pages": 264,
+  "skip_pages": {"front": [1, 15], "back": [250, 264]},
+  "source_type": "jpg",
+  "topics": "mindfulness, meditation, flow state, sports psychology",
+  "short_description": "Mindfulness and meditation practices for peak athletic performance"
+}
